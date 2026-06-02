@@ -379,32 +379,17 @@
       viewerScreen.style.display = 'none';
     }
 
-    // Baked-in slides URL
+    // Hardcoded config — no setup or localStorage needed
     const SLIDES_URL = 'https://docs.google.com/presentation/d/e/2PACX-1vSNVVQivIOn3p2xhu5-g0rsc2EunmdMJbMdbaKm4ZkMEzg2NrhMIvmr0AARhT5avWHhkfN0CxG-qJlE/pubembed?start=true&loop=true&delayms=3000';
+    const PASSWORD = 'sahogarage';
 
-    // Init — skip setup, just ask for password
-    const config = getConfig();
-    if (!config.password) {
-      showSetup();
-    } else {
-      showLock();
-    }
-
-    // Setup save — only need password now, URL is baked in
-    document.getElementById('save-config-btn').addEventListener('click', () => {
-      const pw = document.getElementById('setup-password').value.trim();
-      if (!pw) { alert('Please enter a password.'); return; }
-      saveConfig(SLIDES_URL, pw);
-      showLock();
-    });
-
-    document.getElementById('skip-setup').addEventListener('click', showLock);
+    // Always go straight to lock screen
+    showLock();
 
     // Unlock
     function attemptUnlock() {
-      const config = getConfig();
       const val = passwordInput.value;
-      if (val === config.password) {
+      if (val === PASSWORD) {
         showViewer(SLIDES_URL);
       } else {
         errorMsg.textContent = 'incorrect password';
