@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Slides Viewer</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,57 +14,133 @@
       --surface: #181818;
       --border: #2a2a2a;
       --text: #e8e8e8;
-      --muted: #666;
+      --muted: #555;
       --accent: #c8f04a;
       --error: #ff5f5f;
     }
 
-    body {
-      font-family: 'DM Sans', sans-serif;
+    html, body {
+      width: 100%; height: 100%;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
     }
 
-    /* ── LOCK SCREEN ── */
-    #lock-screen {
+    /* ─── LOADING OVERLAY ─── */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 100;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 32px;
-      width: 100%;
-      max-width: 380px;
-      padding: 24px;
+      justify-content: center;
+      gap: 40px;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
     }
 
-    .lock-icon {
-      width: 56px;
-      height: 56px;
-      border: 1.5px solid var(--border);
-      border-radius: 16px;
+    #loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .logo-stack {
+      position: relative;
+      height: 64px;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .logo-word {
+      position: absolute;
+      font-family: 'DM Mono', monospace;
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(8px);
+      animation: logoIn 0.5s ease forwards;
+    }
+
+    .logo-word .slash {
       color: var(--accent);
     }
 
-    .lock-icon svg {
-      width: 24px;
-      height: 24px;
+    @keyframes logoIn {
+      to { opacity: 1; transform: translateY(0); }
     }
+
+    @keyframes logoOut {
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+
+    .logo-word.exiting {
+      animation: logoOut 0.35s ease forwards;
+    }
+
+    .loader-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .progress-track {
+      width: 180px;
+      height: 1px;
+      background: var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      left: 0; top: 0;
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .loader-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    /* ─── LOCK SCREEN ─── */
+    #lock-screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 24px;
+    }
+
+    #lock-screen.visible { display: flex; }
+
+    .lock-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .lock-logo .slash { color: var(--accent); }
 
     .lock-label {
       text-align: center;
-    }
-
-    .lock-label h1 {
-      font-size: 18px;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 6px;
     }
 
     .lock-label p {
@@ -76,15 +152,14 @@
     .input-row {
       display: flex;
       width: 100%;
+      max-width: 340px;
       border: 1.5px solid var(--border);
       border-radius: 10px;
       overflow: hidden;
       transition: border-color 0.2s;
     }
 
-    .input-row:focus-within {
-      border-color: var(--accent);
-    }
+    .input-row:focus-within { border-color: var(--accent); }
 
     .input-row.error {
       border-color: var(--error);
@@ -92,7 +167,7 @@
     }
 
     @keyframes shake {
-      0%, 100% { transform: translateX(0); }
+      0%,100% { transform: translateX(0); }
       20% { transform: translateX(-6px); }
       40% { transform: translateX(6px); }
       60% { transform: translateX(-4px); }
@@ -131,7 +206,6 @@
     }
 
     #unlock-btn:hover { opacity: 0.85; }
-    #unlock-btn:active { opacity: 0.7; }
 
     .error-msg {
       font-size: 12px;
@@ -141,16 +215,21 @@
       text-align: center;
     }
 
-    /* ── SLIDE VIEWER ── */
+    /* ─── VIEWER ─── */
     #viewer-screen {
+      position: fixed;
+      inset: 0;
       display: none;
       flex-direction: column;
-      width: 100vw;
-      height: 100vh;
+      opacity: 0;
+      transition: opacity 0.5s ease;
     }
 
+    #viewer-screen.visible { display: flex; }
+    #viewer-screen.faded-in { opacity: 1; }
+
     .viewer-bar {
-      height: 48px;
+      height: 44px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -161,9 +240,10 @@
     }
 
     .viewer-bar span {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
       font-family: 'DM Mono', monospace;
+      letter-spacing: 0.06em;
     }
 
     #lock-again {
@@ -172,16 +252,13 @@
       color: var(--muted);
       font-family: 'DM Sans', sans-serif;
       font-size: 12px;
-      padding: 5px 12px;
+      padding: 4px 12px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s;
     }
 
-    #lock-again:hover {
-      border-color: var(--text);
-      color: var(--text);
-    }
+    #lock-again:hover { border-color: var(--text); color: var(--text); }
 
     #slides-frame {
       flex: 1;
@@ -190,139 +267,43 @@
       background: #000;
     }
 
-    /* ── SETUP SCREEN ── */
-    #setup-screen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-      width: 100%;
-      max-width: 480px;
-      padding: 24px;
-    }
-
-    #setup-screen h2 {
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .setup-field {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .setup-field label {
-      font-size: 12px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .setup-field input {
-      width: 100%;
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      outline: none;
-      padding: 12px 14px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      transition: border-color 0.2s;
-    }
-
-    .setup-field input:focus {
-      border-color: var(--accent);
-    }
-
-    .setup-hint {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.6;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 14px;
-      width: 100%;
-    }
-
-    .setup-hint code {
-      font-family: 'DM Mono', monospace;
-      color: var(--accent);
-      font-size: 11px;
-    }
-
-    #save-config-btn {
-      width: 100%;
-      background: var(--accent);
+    /* preload frame — hidden off-screen */
+    #preload-frame {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
+      width: 1280px;
+      height: 720px;
       border: none;
-      border-radius: 8px;
-      padding: 13px;
-      cursor: pointer;
-      color: #0e0e0e;
-      font-weight: 500;
-      font-size: 14px;
-      font-family: 'DM Sans', sans-serif;
-      transition: opacity 0.15s;
-    }
-
-    #save-config-btn:hover { opacity: 0.85; }
-
-    .or-divider {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    #skip-setup {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      text-decoration: underline;
-      font-family: 'DM Sans', sans-serif;
+      visibility: hidden;
     }
   </style>
 </head>
 <body>
 
-  <!-- SETUP SCREEN (first run) -->
-  <div id="setup-screen">
-    <h2>Configure your viewer</h2>
+  <!-- hidden preload iframe -->
+  <iframe id="preload-frame"></iframe>
 
-    <div class="setup-field">
-      <label>Google Slides Embed URL</label>
-      <input id="setup-url" type="text" placeholder="https://docs.google.com/presentation/d/.../embed" />
+  <!-- LOADER -->
+  <div id="loader">
+    <div class="logo-stack">
+      <div class="logo-word" id="logo-word">SA<span class="slash">\</span>HO</div>
     </div>
-    <div class="setup-hint">
-      In Google Slides: <strong>File → Share → Publish to web → Embed</strong><br/>
-      Copy the <code>src="..."</code> URL from the embed code and paste it above.
+    <div class="loader-bottom">
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="loader-label" id="loader-label">loading</div>
     </div>
-
-    <div class="setup-field">
-      <label>Set a password</label>
-      <input id="setup-password" type="text" placeholder="choose something memorable" />
-    </div>
-
-    <button id="save-config-btn">Save & continue</button>
-    <span class="or-divider">or</span>
-    <button id="skip-setup">I've already configured this</button>
   </div>
 
   <!-- LOCK SCREEN -->
-  <div id="lock-screen" style="display:none;">
-    <div class="lock-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="11" width="18" height="11" rx="2"/>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
+  <div id="lock-screen">
+    <div>
+      <div class="lock-logo">SA<span class="slash">\</span>HO</div>
     </div>
     <div class="lock-label">
-      <h1>Protected deck</h1>
-      <p>Enter the password to view</p>
+      <p>Enter password to view deck</p>
     </div>
     <div class="input-row" id="input-row">
       <input id="password-input" type="password" placeholder="Password" autocomplete="off" />
@@ -334,63 +315,119 @@
   <!-- VIEWER -->
   <div id="viewer-screen">
     <div class="viewer-bar">
-      <span>slides viewer</span>
+      <span>SA<span style="color:var(--accent)">\</span>HO — deck</span>
       <button id="lock-again">lock</button>
     </div>
     <iframe id="slides-frame" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
   </div>
 
   <script>
-    const STORAGE_KEY = 'slides_config';
+    const SLIDES_URL = 'https://docs.google.com/presentation/d/e/2PACX-1vSNVVQivIOn3p2xhu5-g0rsc2EunmdMJbMdbaKm4ZkMEzg2NrhMIvmr0AARhT5avWHhkfN0CxG-qJlE/pubembed?start=false&loop=false&delayms=3000';
+    const PASSWORD   = 'sahogarage';
 
-    function getConfig() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
-    }
-
-    function saveConfig(url, password) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, password }));
-    }
-
-    const setupScreen  = document.getElementById('setup-screen');
+    const loader       = document.getElementById('loader');
     const lockScreen   = document.getElementById('lock-screen');
     const viewerScreen = document.getElementById('viewer-screen');
     const passwordInput = document.getElementById('password-input');
     const errorMsg     = document.getElementById('error-msg');
     const inputRow     = document.getElementById('input-row');
     const slidesFrame  = document.getElementById('slides-frame');
+    const preloadFrame = document.getElementById('preload-frame');
+    const progressFill = document.getElementById('progress-fill');
+    const loaderLabel  = document.getElementById('loader-label');
+    const logoWord     = document.getElementById('logo-word');
 
-    function showLock() {
-      setupScreen.style.display  = 'none';
-      lockScreen.style.display   = 'flex';
-      viewerScreen.style.display = 'none';
-      passwordInput.value = '';
-      errorMsg.textContent = '';
+    // ── Logo cycling animation ──
+    const logoVariants = [
+      'SA<span class="slash">\\</span>HO',
+      'SA<span class="slash">/</span>HO',
+      '<span class="slash">\\</span>HO',
+      'SA<span class="slash">\\</span>',
+      'SA<span class="slash">\\</span>HO',
+    ];
+    let logoIdx = 0;
+    let logoCycleInterval = null;
+
+    function cyclelogo() {
+      logoWord.classList.add('exiting');
+      setTimeout(() => {
+        logoIdx = (logoIdx + 1) % logoVariants.length;
+        logoWord.innerHTML = logoVariants[logoIdx];
+        logoWord.classList.remove('exiting');
+        logoWord.style.animation = 'none';
+        logoWord.offsetHeight; // reflow
+        logoWord.style.animation = '';
+      }, 350);
     }
 
-    function showViewer(url) {
-      lockScreen.style.display   = 'none';
-      viewerScreen.style.display = 'flex';
-      slidesFrame.src = url;
+    // ── Preload + progress simulation ──
+    let deckReady = false;
+    let minTimeDone = false;
+    const MIN_LOAD_MS = 3500; // minimum time to show loader
+
+    function checkRevealLock() {
+      if (deckReady && minTimeDone) {
+        revealLock();
+      }
     }
 
-    function showSetup() {
-      setupScreen.style.display  = 'flex';
-      lockScreen.style.display   = 'none';
-      viewerScreen.style.display = 'none';
+    function revealLock() {
+      clearInterval(logoCycleInterval);
+      progressFill.style.width = '100%';
+      loaderLabel.textContent = 'ready';
+      setTimeout(() => {
+        loader.classList.add('hidden');
+        lockScreen.classList.add('visible');
+        setTimeout(() => passwordInput.focus(), 100);
+      }, 400);
     }
 
-    // Hardcoded config — no setup or localStorage needed
-    const SLIDES_URL = 'https://docs.google.com/presentation/d/e/2PACX-1vSNVVQivIOn3p2xhu5-g0rsc2EunmdMJbMdbaKm4ZkMEzg2NrhMIvmr0AARhT5avWHhkfN0CxG-qJlE/pubembed?start=true&loop=true&delayms=3000';
-    const PASSWORD = 'sahogarage';
+    // Simulate smooth progress while waiting
+    let fakeProgress = 0;
+    const progressInterval = setInterval(() => {
+      if (fakeProgress < 85) {
+        fakeProgress += Math.random() * 6;
+        progressFill.style.width = Math.min(fakeProgress, 85) + '%';
+      }
+    }, 300);
 
-    // Always go straight to lock screen
-    showLock();
+    // Start logo cycle
+    logoCycleInterval = setInterval(cyclelogo, 900);
 
-    // Unlock
+    // Start preloading the deck
+    preloadFrame.src = SLIDES_URL;
+
+    preloadFrame.addEventListener('load', () => {
+      clearInterval(progressInterval);
+      fakeProgress = 100;
+      deckReady = true;
+      loaderLabel.textContent = 'ready';
+      checkRevealLock();
+    });
+
+    // Fallback — if iframe doesn't fire load (cross-origin), wait 6s max
+    setTimeout(() => {
+      deckReady = true;
+      checkRevealLock();
+    }, 6000);
+
+    // Minimum display time
+    setTimeout(() => {
+      minTimeDone = true;
+      checkRevealLock();
+    }, MIN_LOAD_MS);
+
+    // ── Unlock ──
     function attemptUnlock() {
-      const val = passwordInput.value;
-      if (val === PASSWORD) {
-        showViewer(SLIDES_URL);
+      if (passwordInput.value === PASSWORD) {
+        lockScreen.classList.remove('visible');
+        viewerScreen.classList.add('visible');
+        slidesFrame.src = SLIDES_URL;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            viewerScreen.classList.add('faded-in');
+          });
+        });
       } else {
         errorMsg.textContent = 'incorrect password';
         inputRow.classList.add('error');
@@ -403,10 +440,17 @@
     document.getElementById('unlock-btn').addEventListener('click', attemptUnlock);
     passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') attemptUnlock(); });
 
-    // Lock again
+    // ── Lock again ──
     document.getElementById('lock-again').addEventListener('click', () => {
       slidesFrame.src = '';
-      showLock();
+      viewerScreen.classList.remove('faded-in');
+      setTimeout(() => {
+        viewerScreen.classList.remove('visible');
+        lockScreen.classList.add('visible');
+        passwordInput.value = '';
+        errorMsg.textContent = '';
+        setTimeout(() => passwordInput.focus(), 100);
+      }, 300);
     });
   </script>
 </body>
