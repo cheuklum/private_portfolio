@@ -471,14 +471,21 @@
 
     // loading label cycling
     const loadingPhrases = [
-      'loading deck...', 'almost there...', 'fetching slides...',
-      'warming up...', 'nearly ready...'
+      'putting on safety glasses...',
+      'waiting for resin to cure...',
+      'finishing up a sketch...',
+      'sharpening my pencils...',
+      'converting videos to gifs...',
+      'pushing changes to git...',
+      'telling jokes...',
+      'tripping on shoelaces...',
+      'cutting loose threads...',
     ];
     let phraseIdx = 0;
     const phraseInterval = setInterval(() => {
       phraseIdx = (phraseIdx + 1) % loadingPhrases.length;
       loaderLabel.textContent = loadingPhrases[phraseIdx];
-    }, 3000);
+    }, 1500);
 
     function revealLock() {
       clearInterval(phraseInterval);
