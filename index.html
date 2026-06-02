@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Slides Viewer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e0e;
+      --surface: #181818;
+      --border: #2a2a2a;
+      --text: #e8e8e8;
+      --muted: #666;
+      --accent: #c8f04a;
+      --error: #ff5f5f;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── LOCK SCREEN ── */
+    #lock-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+      max-width: 380px;
+      padding: 24px;
+    }
+
+    .lock-icon {
+      width: 56px;
+      height: 56px;
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .lock-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .lock-label {
+      text-align: center;
+    }
+
+    .lock-label h1 {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .lock-label p {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .input-row {
+      display: flex;
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .input-row:focus-within {
+      border-color: var(--accent);
+    }
+
+    .input-row.error {
+      border-color: var(--error);
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    #password-input {
+      flex: 1;
+      background: var(--surface);
+      border: none;
+      outline: none;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+    }
+
+    #password-input::placeholder {
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    #unlock-btn {
+      background: var(--accent);
+      border: none;
+      padding: 14px 20px;
+      cursor: pointer;
+      color: #0e0e0e;
+      font-weight: 500;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    #unlock-btn:hover { opacity: 0.85; }
+    #unlock-btn:active { opacity: 0.7; }
+
+    .error-msg {
+      font-size: 12px;
+      color: var(--error);
+      font-family: 'DM Mono', monospace;
+      min-height: 16px;
+      text-align: center;
+    }
+
+    /* ── SLIDE VIEWER ── */
+    #viewer-screen {
+      display: none;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .viewer-bar {
+      height: 48px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .viewer-bar span {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    #lock-again {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    #lock-again:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    #slides-frame {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #000;
+    }
+
+    /* ── SETUP SCREEN ── */
+    #setup-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+    }
+
+    #setup-screen h2 {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .setup-field {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .setup-field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .setup-field input {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .setup-field input:focus {
+      border-color: var(--accent);
+    }
+
+    .setup-hint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      width: 100%;
+    }
+
+    .setup-hint code {
+      font-family: 'DM Mono', monospace;
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    #save-config-btn {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      cursor: pointer;
+      color: #0e0e0e;
+      font-weight: 500;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.15s;
+    }
+
+    #save-config-btn:hover { opacity: 0.85; }
+
+    .or-divider {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #skip-setup {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: 'DM Sans', sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SETUP SCREEN (first run) -->
+  <div id="setup-screen">
+    <h2>Configure your viewer</h2>
+
+    <div class="setup-field">
+      <label>Google Slides Embed URL</label>
+      <input id="setup-url" type="text" placeholder="https://docs.google.com/presentation/d/.../embed" />
+    </div>
+    <div class="setup-hint">
+      In Google Slides: <strong>File → Share → Publish to web → Embed</strong><br/>
+      Copy the <code>src="..."</code> URL from the embed code and paste it above.
+    </div>
+
+    <div class="setup-field">
+      <label>Set a password</label>
+      <input id="setup-password" type="text" placeholder="choose something memorable" />
+    </div>
+
+    <button id="save-config-btn">Save & continue</button>
+    <span class="or-divider">or</span>
+    <button id="skip-setup">I've already configured this</button>
+  </div>
+
+  <!-- LOCK SCREEN -->
+  <div id="lock-screen" style="display:none;">
+    <div class="lock-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="lock-label">
+      <h1>Protected deck</h1>
+      <p>Enter the password to view</p>
+    </div>
+    <div class="input-row" id="input-row">
+      <input id="password-input" type="password" placeholder="Password" autocomplete="off" />
+      <button id="unlock-btn">Unlock →</button>
+    </div>
+    <p class="error-msg" id="error-msg"></p>
+  </div>
+
+  <!-- VIEWER -->
+  <div id="viewer-screen">
+    <div class="viewer-bar">
+      <span>slides viewer</span>
+      <button id="lock-again">lock</button>
+    </div>
+    <iframe id="slides-frame" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'slides_config';
+
+    function getConfig() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    }
+
+    function saveConfig(url, password) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, password }));
+    }
+
+    const setupScreen  = document.getElementById('setup-screen');
+    const lockScreen   = document.getElementById('lock-screen');
+    const viewerScreen = document.getElementById('viewer-screen');
+    const passwordInput = document.getElementById('password-input');
+    const errorMsg     = document.getElementById('error-msg');
+    const inputRow     = document.getElementById('input-row');
+    const slidesFrame  = document.getElementById('slides-frame');
+
+    function showLock() {
+      setupScreen.style.display  = 'none';
+      lockScreen.style.display   = 'flex';
+      viewerScreen.style.display = 'none';
+      passwordInput.value = '';
+      errorMsg.textContent = '';
+    }
+
+    function showViewer(url) {
+      lockScreen.style.display   = 'none';
+      viewerScreen.style.display = 'flex';
+      slidesFrame.src = url;
+    }
+
+    function showSetup() {
+      setupScreen.style.display  = 'flex';
+      lockScreen.style.display   = 'none';
+      viewerScreen.style.display = 'none';
+    }
+
+    // Baked-in slides URL
+    const SLIDES_URL = 'https://docs.google.com/presentation/d/e/2PACX-1vSNVVQivIOn3p2xhu5-g0rsc2EunmdMJbMdbaKm4ZkMEzg2NrhMIvmr0AARhT5avWHhkfN0CxG-qJlE/pubembed?start=true&loop=true&delayms=3000';
+
+    // Init — skip setup, just ask for password
+    const config = getConfig();
+    if (!config.password) {
+      showSetup();
+    } else {
+      showLock();
+    }
+
+    // Setup save — only need password now, URL is baked in
+    document.getElementById('save-config-btn').addEventListener('click', () => {
+      const pw = document.getElementById('setup-password').value.trim();
+      if (!pw) { alert('Please enter a password.'); return; }
+      saveConfig(SLIDES_URL, pw);
+      showLock();
+    });
+
+    document.getElementById('skip-setup').addEventListener('click', showLock);
+
+    // Unlock
+    function attemptUnlock() {
+      const config = getConfig();
+      const val = passwordInput.value;
+      if (val === config.password) {
+        showViewer(SLIDES_URL);
+      } else {
+        errorMsg.textContent = 'incorrect password';
+        inputRow.classList.add('error');
+        setTimeout(() => inputRow.classList.remove('error'), 400);
+        passwordInput.value = '';
+        passwordInput.focus();
+      }
+    }
+
+    document.getElementById('unlock-btn').addEventListener('click', attemptUnlock);
+    passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') attemptUnlock(); });
+
+    // Lock again
+    document.getElementById('lock-again').addEventListener('click', () => {
+      slidesFrame.src = '';
+      showLock();
+    });
+  </script>
+</body>
+</html>
